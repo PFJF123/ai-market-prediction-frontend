@@ -1,5 +1,6 @@
 import streamlit as st
 import asyncio
+import json
 from ..components.header import render_header
 from ..utils.api import APIClient
 from ..utils.config import THEME_PRIMARY_COLOR, API_BASE_URL
@@ -8,7 +9,20 @@ async def load_recent_predictions():
     """Load recent predictions from API"""
     try:
         predictions = await APIClient.get_recent_predictions(limit=3)
-        st.session_state.recent_predictions = predictions
+        # Ensure predictions is a list
+        if predictions and isinstance(predictions, dict) and "error" not in predictions:
+            # If it's a single prediction or wrapped in a data field
+            if "data" in predictions:
+                st.session_state.recent_predictions = predictions.get("data", [])
+            else:
+                st.session_state.recent_predictions = [predictions]
+        elif predictions and isinstance(predictions, list):
+            st.session_state.recent_predictions = predictions
+        else:
+            st.session_state.recent_predictions = []
+            
+        # Log the predictions for debugging
+        print(f"Recent predictions: {json.dumps(st.session_state.recent_predictions, default=str)}")
     except Exception as e:
         st.error(f"Error loading recent predictions: {str(e)}")
         st.session_state.recent_predictions = []
@@ -141,29 +155,43 @@ def render_home_page():
     if not recent_predictions:
         st.info("No recent predictions available. Try generating a new prediction!")
     else:
-        for prediction in recent_predictions:
-            # Create a clickable card for each prediction
-            with st.container():
-                st.markdown(
-                    f"""
-                    <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
-                        <h3>{prediction.get('query', 'Unknown Query')}</h3>
-                        <p style="color: #666;">
-                            Created: {prediction.get('created_at', 'Unknown')} | 
-                            Sectors: {len(prediction.get('sectors', []))} | 
-                            Trade Ideas: {len(prediction.get('trade_ideas', []))}
-                        </p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+        try:
+            for prediction in recent_predictions:
+                if not isinstance(prediction, dict):
+                    continue
+                    
+                # Safely extract prediction data
+                query = prediction.get('query', 'Unknown Query')
+                created_at = prediction.get('created_at', 'Unknown')
+                sectors = prediction.get('sectors', [])
+                trade_ideas = prediction.get('trade_ideas', [])
+                prediction_id = prediction.get('id', 'unknown')
                 
-                # Add a button to view the prediction
-                if st.button(f"View Prediction", key=f"view_{prediction.get('id', 'unknown')}"):
-                    # Store the prediction ID in session state and navigate to predictions page
-                    st.session_state.prediction_id = prediction.get('id')
-                    st.session_state.page = "Predictions"
-                    st.experimental_rerun()
+                # Create a clickable card for each prediction
+                with st.container():
+                    st.markdown(
+                        f"""
+                        <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
+                            <h3>{query}</h3>
+                            <p style="color: #666;">
+                                Created: {created_at} | 
+                                Sectors: {len(sectors)} | 
+                                Trade Ideas: {len(trade_ideas)}
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    # Add a button to view the prediction
+                    if st.button(f"View Prediction", key=f"view_{prediction_id}"):
+                        # Store the prediction ID in session state and navigate to predictions page
+                        st.session_state.prediction_id = prediction_id
+                        st.session_state.page = "Predictions"
+                        st.experimental_rerun()
+        except Exception as e:
+            st.error(f"Error displaying predictions: {str(e)}")
+            st.info("Please try refreshing the page or generating a new prediction.")
     
     # Call to action
     st.markdown("<hr/>", unsafe_allow_html=True)
