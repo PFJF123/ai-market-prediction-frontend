@@ -18,14 +18,22 @@ async def load_recent_predictions():
         # Log the raw response for debugging
         print(f"Raw recent predictions response: {json.dumps(predictions, default=str)[:500]}...")
         
+        # Handle error responses
+        if isinstance(predictions, dict) and "error" in predictions:
+            st.session_state.prediction_load_error = predictions.get("error", "Unknown error")
+            st.session_state.recent_predictions = []
+            print(f"Error loading predictions: {predictions.get('error')}")
+            return
+            
+        # If we got an empty list or None, show a message about backend issues
+        if not predictions:
+            st.session_state.prediction_load_error = "The backend API returned no predictions. This may be due to a backend issue."
+            st.session_state.recent_predictions = []
+            print("No predictions returned from API")
+            return
+            
         # Handle different response formats
         if isinstance(predictions, dict):
-            if "error" in predictions:
-                st.session_state.prediction_load_error = predictions.get("error", "Unknown error")
-                st.session_state.recent_predictions = []
-                print(f"Error loading predictions: {predictions.get('error')}")
-                return
-                
             # Extract data from dictionary response
             if "data" in predictions:
                 st.session_state.recent_predictions = predictions.get("data", [])

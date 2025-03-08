@@ -40,6 +40,16 @@ async def generate_prediction(query, time_frame="medium_term", sectors_of_intere
                     2. Your network connection is working
                     3. The API URL in the configuration is correct
                     """)
+                # If it's a backend error, show a more specific message
+                else:
+                    st.warning("""
+                    The backend API returned an error. This may be due to:
+                    1. A temporary issue with the backend service
+                    2. A configuration issue with the OpenAI service
+                    3. A database connection problem
+                    
+                    Please try again later or contact the administrator.
+                    """)
                 return None
             
             # Extract the prediction from the response
@@ -125,6 +135,27 @@ async def get_recent_predictions(limit=5):
                     2. Your network connection is working
                     3. The API URL in the configuration is correct
                     """)
+                # If it's a backend error, show a more specific message
+                else:
+                    st.warning("""
+                    The backend API returned an error. This may be due to:
+                    1. A temporary issue with the backend service
+                    2. A configuration issue with the OpenAI service
+                    3. A database connection problem
+                    
+                    Please try again later or contact the administrator.
+                    """)
+                return []
+            
+            # If we got an empty list or None, show a message about backend issues
+            if not predictions:
+                st.warning("""
+                No predictions were returned from the backend. This may be due to:
+                1. No predictions have been generated yet
+                2. A backend service issue
+                
+                Try generating a new prediction or check back later.
+                """)
                 return []
             
             # Return the predictions
