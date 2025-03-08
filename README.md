@@ -22,13 +22,7 @@ This application is designed to be deployed on Streamlit Cloud:
 5. Set up the following secrets in the Streamlit Cloud dashboard:
    ```toml
    [api]
-   base_url = "https://chic-nourishment-production.up.railway.app"
-   
-   [openai]
-   api_key = "your_openai_api_key"
-   
-   [mongodb]
-   uri = "your_mongodb_uri"
+   base_url = "http://chic-nourishment-production.up.railway.app"
    ```
 
 ### Local Development
@@ -44,33 +38,27 @@ This application is designed to be deployed on Streamlit Cloud:
    pip install -r requirements.txt
    ```
 
-3. Create a `.streamlit/secrets.toml` file with the following content:
-   ```toml
-   [api]
-   base_url = "https://chic-nourishment-production.up.railway.app"
-   
-   [openai]
-   api_key = "your_openai_api_key"
-   
-   [mongodb]
-   uri = "your_mongodb_uri"
+3. Create a `.env` file with the following content:
+   ```
+   API_URL=http://chic-nourishment-production.up.railway.app
    ```
 
 4. Run the application:
    ```
-   streamlit run streamlit_app.py
+   streamlit run app.py
    ```
 
 ## Backend Connection
 
 The frontend is configured to connect to the backend API deployed at:
-- https://chic-nourishment-production.up.railway.app
+- http://chic-nourishment-production.up.railway.app
 
-If you need to connect to a different backend, update the `base_url` in the `.streamlit/secrets.toml` file.
+If you need to connect to a different backend, update the `API_URL` in the `.env` file.
 
 ## Project Structure
 
-- `streamlit_app.py`: Main application entry point
+- `app.py`: Main application entry point
+- `src/app.py`: Core application logic
 - `src/components/`: UI components
 - `src/pages/`: Application pages
 - `src/utils/`: Utility functions
