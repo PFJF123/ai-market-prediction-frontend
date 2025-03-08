@@ -19,13 +19,23 @@ This application is designed to be deployed on Streamlit Cloud:
 2. Go to [Streamlit Cloud](https://streamlit.io/cloud)
 3. Sign in with your GitHub account
 4. Deploy the app by selecting this repository
-5. Set up any required secrets in the Streamlit Cloud dashboard
+5. Set up the following secrets in the Streamlit Cloud dashboard:
+   ```toml
+   [api]
+   base_url = "https://chic-nourishment-production.up.railway.app"
+   
+   [openai]
+   api_key = "your_openai_api_key"
+   
+   [mongodb]
+   uri = "your_mongodb_uri"
+   ```
 
 ### Local Development
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/ai-market-prediction-frontend.git
+   git clone https://github.com/PFJF123/ai-market-prediction-frontend.git
    cd ai-market-prediction-frontend
    ```
 
@@ -34,19 +44,29 @@ This application is designed to be deployed on Streamlit Cloud:
    pip install -r requirements.txt
    ```
 
-3. Run the application:
+3. Create a `.streamlit/secrets.toml` file with the following content:
+   ```toml
+   [api]
+   base_url = "https://chic-nourishment-production.up.railway.app"
+   
+   [openai]
+   api_key = "your_openai_api_key"
+   
+   [mongodb]
+   uri = "your_mongodb_uri"
+   ```
+
+4. Run the application:
    ```
    streamlit run streamlit_app.py
    ```
 
-## Environment Variables
+## Backend Connection
 
-Create a `.streamlit/secrets.toml` file with the following variables:
+The frontend is configured to connect to the backend API deployed at:
+- https://chic-nourishment-production.up.railway.app
 
-```toml
-[api]
-base_url = "your_backend_api_url"
-```
+If you need to connect to a different backend, update the `base_url` in the `.streamlit/secrets.toml` file.
 
 ## Project Structure
 
