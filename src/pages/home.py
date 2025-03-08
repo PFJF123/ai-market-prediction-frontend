@@ -28,7 +28,7 @@ def render_home_page():
         3. Verify network connectivity between the frontend and backend
         """)
         
-        if st.button("Retry Connection"):
+        if st.button("Retry Connection", key="home_retry_connection"):
             asyncio.run(APIClient.health_check())
             st.experimental_rerun()
             

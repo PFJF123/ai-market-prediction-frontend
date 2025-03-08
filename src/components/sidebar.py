@@ -61,7 +61,7 @@ def render_sidebar():
         else:
             st.error(f"API: Disconnected from {API_BASE_URL}")
             st.info("Please ensure the backend API is running and accessible.")
-            if st.button("Retry Connection"):
+            if st.button("Retry Connection", key="sidebar_retry_connection"):
                 asyncio.run(check_api_health())
                 st.experimental_rerun()
         
