@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 from ..components.header import render_header
 from ..utils.api import APIClient
-from ..utils.config import THEME_PRIMARY_COLOR
+from ..utils.config import THEME_PRIMARY_COLOR, API_BASE_URL
 
 async def load_recent_predictions():
     """Load recent predictions from API"""
@@ -16,6 +16,23 @@ async def load_recent_predictions():
 def render_home_page():
     """Render the home page"""
     render_header()
+    
+    # Check if API is connected
+    if "api_connected" in st.session_state and not st.session_state.api_connected:
+        st.warning("⚠️ Backend API is not connected")
+        st.info(f"The application is currently unable to connect to the backend API at {API_BASE_URL}. Some features may not work properly.")
+        st.markdown("""
+        ### Troubleshooting Steps:
+        1. Ensure the backend API is running
+        2. Check that the API URL in the configuration is correct
+        3. Verify network connectivity between the frontend and backend
+        """)
+        
+        if st.button("Retry Connection"):
+            asyncio.run(APIClient.health_check())
+            st.experimental_rerun()
+            
+        st.markdown("---")
     
     # Hero section
     st.markdown(
@@ -44,7 +61,8 @@ def render_home_page():
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("Generate Prediction", key="home_search_button", use_container_width=True):
+        button_disabled = "api_connected" in st.session_state and not st.session_state.api_connected
+        if st.button("Generate Prediction", key="home_search_button", use_container_width=True, disabled=button_disabled):
             if search_query:
                 # Store the search query in session state and navigate to predictions page
                 st.session_state.search_query = search_query
@@ -52,6 +70,9 @@ def render_home_page():
                 st.experimental_rerun()
             else:
                 st.warning("Please enter a search query")
+                
+        if button_disabled:
+            st.info("Prediction generation is disabled because the backend API is not connected")
     
     # Features section
     st.markdown("<hr/>", unsafe_allow_html=True)

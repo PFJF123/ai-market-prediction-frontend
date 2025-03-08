@@ -1,11 +1,17 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
 # API Settings
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+# Try to get API URL from Streamlit secrets first, then fall back to environment variables
+try:
+    API_URL = st.secrets["api"]["base_url"]
+except (KeyError, FileNotFoundError):
+    API_URL = os.getenv("API_URL", "http://localhost:8000")
+
 API_V1_PREFIX = os.getenv("API_V1_PREFIX", "/api/v1")
 
 # Full API base URL

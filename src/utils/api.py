@@ -48,6 +48,17 @@ class APIClient:
                 
                 return result
                 
+        except httpx.ConnectError as e:
+            elapsed_time = time.time() - start_time
+            error_message = f"Cannot connect to API at {API_BASE_URL}. Please check if the backend is running."
+            print(f"API Connection Error: {method} {endpoint} - {str(e)} - {elapsed_time:.2f}s")
+            
+            # Store connection status in session state
+            if "api_connected" in st.session_state:
+                st.session_state.api_connected = False
+                
+            return {"error": error_message, "connection_error": True}
+            
         except httpx.HTTPStatusError as e:
             elapsed_time = time.time() - start_time
             print(f"API Error: {method} {endpoint} - {e.response.status_code} - {elapsed_time:.2f}s")
@@ -57,19 +68,21 @@ class APIClient:
                 error_detail = e.response.json().get("detail", str(e))
             except:
                 error_detail = str(e)
-                
-            # Show error in Streamlit
-            st.error(f"API Error: {error_detail}")
             
+            # Store connection status in session state
+            if "api_connected" in st.session_state:
+                st.session_state.api_connected = True
+                
             return {"error": error_detail}
             
         except Exception as e:
             elapsed_time = time.time() - start_time
             print(f"API Error: {method} {endpoint} - {str(e)} - {elapsed_time:.2f}s")
             
-            # Show error in Streamlit
-            st.error(f"API Error: {str(e)}")
-            
+            # Store connection status in session state
+            if "api_connected" in st.session_state:
+                st.session_state.api_connected = False
+                
             return {"error": str(e)}
     
     @classmethod
@@ -216,4 +229,15 @@ class APIClient:
         Returns:
             Health check response
         """
-        return await cls._make_request("GET", "/health") 
+        response = await cls._make_request("GET", "/health")
+        
+        # Update connection status in session state
+        if "api_connected" not in st.session_state:
+            st.session_state.api_connected = False
+            
+        if "error" not in response or "connection_error" not in response:
+            st.session_state.api_connected = True
+        else:
+            st.session_state.api_connected = False
+            
+        return response 

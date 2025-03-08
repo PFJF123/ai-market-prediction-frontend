@@ -1,9 +1,24 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
-from ..utils.config import THEME_PRIMARY_COLOR
+from ..utils.config import THEME_PRIMARY_COLOR, API_BASE_URL
+import asyncio
+from ..utils.api import APIClient
+
+async def check_api_health():
+    """Check the health of the API and update session state"""
+    if "api_health_checking" not in st.session_state or not st.session_state.api_health_checking:
+        st.session_state.api_health_checking = True
+        health_response = await APIClient.health_check()
+        st.session_state.api_health = health_response
+        st.session_state.api_health_checking = False
 
 def render_sidebar():
     """Render the application sidebar"""
+    
+    # Run API health check asynchronously
+    if "api_health" not in st.session_state:
+        st.session_state.api_health = {"status": "unknown"}
+        asyncio.run(check_api_health())
     
     with st.sidebar:
         # App logo/title
@@ -39,18 +54,16 @@ def render_sidebar():
         st.markdown("<hr/>", unsafe_allow_html=True)
         
         # API Status indicator
-        if "api_health" in st.session_state and st.session_state.api_health:
-            health = st.session_state.api_health
-            status = health.get("status", "unknown")
-            
-            if status == "healthy":
-                st.success("API: Connected")
-            elif status == "degraded":
-                st.warning("API: Degraded")
-            else:
-                st.error("API: Disconnected")
+        st.markdown("### Backend Connection")
+        
+        if "api_connected" in st.session_state and st.session_state.api_connected:
+            st.success(f"API: Connected to {API_BASE_URL}")
         else:
-            st.info("API: Checking...")
+            st.error(f"API: Disconnected from {API_BASE_URL}")
+            st.info("Please ensure the backend API is running and accessible.")
+            if st.button("Retry Connection"):
+                asyncio.run(check_api_health())
+                st.experimental_rerun()
         
         # Additional sidebar content
         st.markdown("<hr/>", unsafe_allow_html=True)

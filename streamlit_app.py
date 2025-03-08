@@ -1,6 +1,7 @@
 import os
 import sys
 import streamlit as st
+import asyncio
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
@@ -31,6 +32,7 @@ st.markdown(
 
 # Import components
 from src.components.sidebar import render_sidebar
+from src.utils.api import APIClient
 
 # Import pages
 from src.pages.home import render_home_page
@@ -41,6 +43,10 @@ from src.pages.about import render_about_page
 # Initialize session state for current page if not exists
 if "page" not in st.session_state:
     st.session_state.page = "Home"
+
+# Initialize API connection status
+if "api_connected" not in st.session_state:
+    st.session_state.api_connected = False
 
 # Check if model_insights and recommendations modules exist
 try:
@@ -54,6 +60,11 @@ try:
     has_recommendations = True
 except ImportError:
     has_recommendations = False
+
+async def check_api_health():
+    """Check the health of the API and update session state"""
+    health_response = await APIClient.health_check()
+    return health_response
 
 def main():
     """Main function to render the application"""
@@ -79,4 +90,9 @@ def main():
         render_home_page()
 
 if __name__ == "__main__":
+    # Run initial API health check
+    if "api_health_checked" not in st.session_state:
+        asyncio.run(check_api_health())
+        st.session_state.api_health_checked = True
+    
     main() 
