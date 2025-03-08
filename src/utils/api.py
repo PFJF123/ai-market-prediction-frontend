@@ -24,13 +24,18 @@ class APIClient:
         Returns:
             API response
         """
+        # Ensure endpoint has no trailing slash to avoid redirect issues
+        if endpoint.endswith('/'):
+            endpoint = endpoint[:-1]
+            
         url = f"{API_BASE_URL}{endpoint}"
         print(f"Making {method} request to {url}")
         if params:
             print(f"With params: {json.dumps(params, default=str)}")
         
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            # Set a shorter timeout and disable follow_redirects to avoid redirect loops
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
                 if method == "GET":
                     response = await client.get(url, params=params)
                 elif method == "POST":
@@ -38,18 +43,34 @@ class APIClient:
                 else:
                     return {"error": f"Unsupported method: {method}"}
                 
-                # Check if we got redirected
-                if len(response.history) > 0:
-                    original_url = str(response.history[0].url)
-                    final_url = str(response.url)
-                    print(f"Request was redirected: {original_url} -> {final_url}")
-                    # We still proceed with processing the response
+                # Handle redirects manually
+                if response.status_code in (301, 302, 303, 307, 308):
+                    redirect_url = response.headers.get('location')
+                    print(f"Received redirect {response.status_code} to: {redirect_url}")
+                    
+                    # Try the redirect URL directly
+                    if redirect_url:
+                        print(f"Following redirect to: {redirect_url}")
+                        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as redirect_client:
+                            if method == "GET":
+                                redirect_response = await redirect_client.get(redirect_url, params=params)
+                            elif method == "POST":
+                                redirect_response = await redirect_client.post(redirect_url, json=data, params=params)
+                            
+                            # Use the redirect response instead
+                            response = redirect_response
+                
+                print(f"Response status: {response.status_code}")
+                print(f"Response headers: {dict(response.headers)}")
                 
                 if response.status_code == 200:
                     try:
-                        return response.json()
+                        json_response = response.json()
+                        print(f"Response JSON: {json.dumps(json_response, default=str)[:500]}...")
+                        return json_response
                     except Exception as e:
                         print(f"Error parsing JSON response: {str(e)}")
+                        print(f"Response text: {response.text[:500]}...")
                         return {"error": "Invalid JSON response", "raw_response": response.text[:500]}
                 else:
                     print(f"API error: {response.status_code} - {response.text[:500]}")
@@ -63,6 +84,8 @@ class APIClient:
             return {"connection_error": str(e), "status": "error"}
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return {"error": str(e), "status": "error"}
     
     @classmethod
@@ -80,6 +103,8 @@ class APIClient:
         Returns:
             News search results
         """
+        print(f"Searching news with query={query}, sentiment={sentiment}, sectors={sectors}, limit={limit}, offset={offset}")
+        
         params = {
             "limit": limit,
             "offset": offset
@@ -94,7 +119,8 @@ class APIClient:
         if sectors:
             params["sectors"] = sectors
             
-        return await cls._make_request("GET", "/news/", params=params)
+        # Use endpoint without trailing slash
+        return await cls._make_request("GET", "/news", params=params)
     
     @classmethod
     async def fetch_news(cls, query: str = None, max_results: int = 30) -> List[str]:
@@ -103,20 +129,22 @@ class APIClient:
         
         Args:
             query: Search query for news
-            max_results: Maximum number of results to fetch per source
+            max_results: Maximum number of results to fetch
             
         Returns:
             List of article IDs
         """
-        params = {}
+        print(f"Fetching news with query={query}, max_results={max_results}")
+        
+        data = {
+            "max_results": max_results
+        }
         
         if query:
-            params["query"] = query
+            data["query"] = query
             
-        if max_results:
-            params["max_results"] = max_results
-            
-        return await cls._make_request("GET", "/news/fetch/", params=params)
+        # Use endpoint without trailing slash
+        return await cls._make_request("POST", "/news/fetch", data=data)
     
     @classmethod
     async def get_news_article(cls, article_id: str) -> Dict[str, Any]:
@@ -129,20 +157,26 @@ class APIClient:
         Returns:
             News article
         """
-        return await cls._make_request("GET", f"/news/{article_id}/")
+        print(f"Getting news article with ID={article_id}")
+        
+        # Use endpoint without trailing slash
+        return await cls._make_request("GET", f"/news/{article_id}")
     
     @classmethod
     async def analyze_article_sentiment(cls, article_id: str) -> Dict[str, Any]:
         """
-        Analyze sentiment for a specific news article
+        Analyze sentiment for a news article
         
         Args:
             article_id: ID of the article to analyze
             
         Returns:
-            Updated news article with sentiment analysis
+            Updated news article with sentiment
         """
-        return await cls._make_request("POST", f"/news/{article_id}/analyze/")
+        print(f"Analyzing sentiment for article with ID={article_id}")
+        
+        # Use endpoint without trailing slash
+        return await cls._make_request("POST", f"/news/{article_id}/analyze")
     
     @classmethod
     async def generate_prediction(cls, query: str, time_frame: str = "medium_term", sectors_of_interest: List[str] = None, max_trade_ideas: int = 5) -> Dict[str, Any]:
@@ -158,6 +192,8 @@ class APIClient:
         Returns:
             Market prediction
         """
+        print(f"Generating prediction with query={query}, time_frame={time_frame}, sectors_of_interest={sectors_of_interest}, max_trade_ideas={max_trade_ideas}")
+        
         data = {
             "query": query,
             "time_frame": time_frame,
@@ -167,7 +203,8 @@ class APIClient:
         if sectors_of_interest:
             data["sectors_of_interest"] = sectors_of_interest
             
-        return await cls._make_request("POST", "/predictions/", data=data)
+        # Use endpoint without trailing slash
+        return await cls._make_request("POST", "/predictions", data=data)
     
     @classmethod
     async def get_prediction(cls, prediction_id: str) -> Dict[str, Any]:
@@ -180,7 +217,10 @@ class APIClient:
         Returns:
             Market prediction
         """
-        return await cls._make_request("GET", f"/predictions/{prediction_id}/")
+        print(f"Getting prediction with ID={prediction_id}")
+        
+        # Use endpoint without trailing slash
+        return await cls._make_request("GET", f"/predictions/{prediction_id}")
     
     @classmethod
     async def get_recent_predictions(cls, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
@@ -194,8 +234,10 @@ class APIClient:
         Returns:
             List of market predictions
         """
-        # Ensure the URL ends with a trailing slash to avoid redirects
-        endpoint = "/predictions/"
+        print(f"Getting recent predictions with limit={limit}, offset={offset}")
+        
+        # Use endpoint without trailing slash
+        endpoint = "/predictions"
         
         params = {
             "limit": limit,
@@ -205,7 +247,9 @@ class APIClient:
         response = await cls._make_request("GET", endpoint, params=params)
         
         # Log the response for debugging
-        print(f"Recent predictions API response: {json.dumps(response, default=str)[:500]}...")
+        print(f"Recent predictions API response type: {type(response)}")
+        if response:
+            print(f"Recent predictions API response: {json.dumps(response, default=str)[:500]}...")
         
         # If the response is a dictionary with 'data' field, extract the data
         if isinstance(response, dict) and "data" in response and "error" not in response:
@@ -219,7 +263,12 @@ class APIClient:
         if isinstance(response, list):
             return response
             
-        # If there's an error, return the response as is
+        # If there's an error, return an empty list
+        if isinstance(response, dict) and "error" in response:
+            print(f"Error in get_recent_predictions: {response['error']}")
+            return []
+            
+        # If there's an unexpected response, return it as is
         return response
     
     @classmethod
@@ -231,8 +280,10 @@ class APIClient:
             Health check response
         """
         try:
-            # Use trailing slash to avoid redirects
-            response = await cls._make_request("GET", "/health/")
+            print(f"Checking API health at {API_BASE_URL}/health")
+            
+            # Use endpoint without trailing slash
+            response = await cls._make_request("GET", "/health")
             
             # Update connection status in session state
             if "api_connected" not in st.session_state:
@@ -248,6 +299,8 @@ class APIClient:
             return response
         except Exception as e:
             print(f"API health check exception: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             if "api_connected" in st.session_state:
                 st.session_state.api_connected = False
             return {"error": str(e), "status": "error"} 
