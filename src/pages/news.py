@@ -1,0 +1,150 @@
+import streamlit as st
+import asyncio
+from ..components.header import render_header
+from ..components.news_card import render_news_list
+from ..utils.api import APIClient
+
+async def fetch_news(query=None, max_results=30):
+    """Fetch news from API"""
+    try:
+        with st.spinner("Fetching news..."):
+            article_ids = await APIClient.fetch_news(query=query, max_results=max_results)
+            st.session_state.fetched_article_ids = article_ids
+            st.success(f"Fetched {len(article_ids)} news articles")
+    except Exception as e:
+        st.error(f"Error fetching news: {str(e)}")
+        st.session_state.fetched_article_ids = []
+
+async def search_news(query=None, sentiment=None, sectors=None, limit=10, offset=0):
+    """Search news from API"""
+    try:
+        with st.spinner("Searching news..."):
+            response = await APIClient.search_news(
+                query=query,
+                sentiment=sentiment,
+                sectors=sectors,
+                limit=limit,
+                offset=offset
+            )
+            
+            if "error" in response:
+                st.error(f"Error searching news: {response['error']}")
+                return []
+            
+            return response.get("items", [])
+    except Exception as e:
+        st.error(f"Error searching news: {str(e)}")
+        return []
+
+async def analyze_sentiment(article_id):
+    """Analyze sentiment for an article"""
+    try:
+        with st.spinner("Analyzing sentiment..."):
+            updated_article = await APIClient.analyze_article_sentiment(article_id)
+            return updated_article
+    except Exception as e:
+        st.error(f"Error analyzing sentiment: {str(e)}")
+        return None
+
+def render_news_page():
+    """Render the news page"""
+    render_header()
+    
+    st.title("Financial News")
+    
+    # Create tabs for different news views
+    tab1, tab2 = st.tabs(["Search News", "Fetch Latest News"])
+    
+    with tab1:
+        st.subheader("Search News Articles")
+        
+        # Search form
+        with st.form(key="news_search_form"):
+            search_query = st.text_input("Search Query", key="news_search_query")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                sentiment_options = ["All", "Bullish", "Bearish", "Neutral"]
+                selected_sentiment = st.selectbox("Sentiment", sentiment_options, key="news_search_sentiment")
+            
+            with col2:
+                limit_options = [10, 20, 50, 100]
+                selected_limit = st.selectbox("Results Limit", limit_options, key="news_search_limit")
+            
+            submit_button = st.form_submit_button(label="Search")
+        
+        # Process form submission
+        if submit_button:
+            # Convert sentiment selection to API parameter
+            sentiment_param = None
+            if selected_sentiment != "All":
+                sentiment_param = selected_sentiment.lower()
+            
+            # Search news
+            search_results = asyncio.run(search_news(
+                query=search_query,
+                sentiment=sentiment_param,
+                limit=selected_limit
+            ))
+            
+            # Store results in session state
+            st.session_state.news_search_results = search_results
+        
+        # Display search results
+        if "news_search_results" in st.session_state:
+            render_news_list(st.session_state.news_search_results)
+    
+    with tab2:
+        st.subheader("Fetch Latest News")
+        
+        # Fetch form
+        with st.form(key="news_fetch_form"):
+            fetch_query = st.text_input("Topic (optional)", key="news_fetch_query")
+            
+            max_results_options = [10, 30, 50, 100]
+            max_results = st.selectbox("Maximum Results", max_results_options, index=1, key="news_fetch_max")
+            
+            fetch_button = st.form_submit_button(label="Fetch News")
+        
+        # Process form submission
+        if fetch_button:
+            # Fetch news
+            asyncio.run(fetch_news(query=fetch_query, max_results=max_results))
+        
+        # Display fetched article IDs
+        if "fetched_article_ids" in st.session_state and st.session_state.fetched_article_ids:
+            st.success(f"Fetched {len(st.session_state.fetched_article_ids)} articles")
+            
+            # Option to analyze sentiment
+            if st.button("Analyze Sentiment for All Articles"):
+                # Get the first 10 articles to analyze (to avoid overloading)
+                article_ids_to_analyze = st.session_state.fetched_article_ids[:10]
+                
+                analyzed_articles = []
+                for article_id in article_ids_to_analyze:
+                    with st.spinner(f"Analyzing article {article_ids_to_analyze.index(article_id) + 1}/{len(article_ids_to_analyze)}..."):
+                        updated_article = asyncio.run(analyze_sentiment(article_id))
+                        if updated_article:
+                            analyzed_articles.append(updated_article)
+                
+                # Store analyzed articles in session state
+                st.session_state.analyzed_articles = analyzed_articles
+                st.success(f"Analyzed sentiment for {len(analyzed_articles)} articles")
+            
+            # Display analyzed articles if available
+            if "analyzed_articles" in st.session_state and st.session_state.analyzed_articles:
+                render_news_list(st.session_state.analyzed_articles)
+            else:
+                # Search for the fetched articles to display them
+                article_ids_to_display = st.session_state.fetched_article_ids[:20]  # Limit to 20 for display
+                
+                # Fetch articles one by one
+                articles_to_display = []
+                for article_id in article_ids_to_display:
+                    article = asyncio.run(APIClient.get_news_article(article_id))
+                    if article and "error" not in article:
+                        articles_to_display.append(article)
+                
+                # Display the articles
+                render_news_list(articles_to_display) 
