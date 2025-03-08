@@ -24,18 +24,20 @@ class APIClient:
         Returns:
             API response
         """
-        # Ensure endpoint has no trailing slash to avoid redirect issues
-        if endpoint.endswith('/'):
-            endpoint = endpoint[:-1]
+        # IMPORTANT: Always add trailing slash to prevent redirects
+        if not endpoint.endswith('/'):
+            endpoint = f"{endpoint}/"
             
-        url = f"{API_BASE_URL}{endpoint}"
+        # Always use HTTP instead of HTTPS to avoid protocol redirects
+        url = API_BASE_URL.replace("https://", "http://") + endpoint
+        
         print(f"Making {method} request to {url}")
         if params:
             print(f"With params: {json.dumps(params, default=str)}")
         
         try:
-            # Set a shorter timeout and disable follow_redirects to avoid redirect loops
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+            # Use a longer timeout and follow redirects
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 if method == "GET":
                     response = await client.get(url, params=params)
                 elif method == "POST":
@@ -43,25 +45,13 @@ class APIClient:
                 else:
                     return {"error": f"Unsupported method: {method}"}
                 
-                # Handle redirects manually
-                if response.status_code in (301, 302, 303, 307, 308):
-                    redirect_url = response.headers.get('location')
-                    print(f"Received redirect {response.status_code} to: {redirect_url}")
-                    
-                    # Try the redirect URL directly
-                    if redirect_url:
-                        print(f"Following redirect to: {redirect_url}")
-                        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as redirect_client:
-                            if method == "GET":
-                                redirect_response = await redirect_client.get(redirect_url, params=params)
-                            elif method == "POST":
-                                redirect_response = await redirect_client.post(redirect_url, json=data, params=params)
-                            
-                            # Use the redirect response instead
-                            response = redirect_response
-                
                 print(f"Response status: {response.status_code}")
-                print(f"Response headers: {dict(response.headers)}")
+                
+                # Check if we got redirected
+                if len(response.history) > 0:
+                    original_url = str(response.history[0].url)
+                    final_url = str(response.url)
+                    print(f"Request was redirected: {original_url} -> {final_url}")
                 
                 if response.status_code == 200:
                     try:
@@ -119,7 +109,7 @@ class APIClient:
         if sectors:
             params["sectors"] = sectors
             
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("GET", "/news", params=params)
     
     @classmethod
@@ -143,7 +133,7 @@ class APIClient:
         if query:
             data["query"] = query
             
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("POST", "/news/fetch", data=data)
     
     @classmethod
@@ -159,7 +149,7 @@ class APIClient:
         """
         print(f"Getting news article with ID={article_id}")
         
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("GET", f"/news/{article_id}")
     
     @classmethod
@@ -175,7 +165,7 @@ class APIClient:
         """
         print(f"Analyzing sentiment for article with ID={article_id}")
         
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("POST", f"/news/{article_id}/analyze")
     
     @classmethod
@@ -203,7 +193,7 @@ class APIClient:
         if sectors_of_interest:
             data["sectors_of_interest"] = sectors_of_interest
             
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("POST", "/predictions", data=data)
     
     @classmethod
@@ -219,7 +209,7 @@ class APIClient:
         """
         print(f"Getting prediction with ID={prediction_id}")
         
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         return await cls._make_request("GET", f"/predictions/{prediction_id}")
     
     @classmethod
@@ -236,7 +226,7 @@ class APIClient:
         """
         print(f"Getting recent predictions with limit={limit}, offset={offset}")
         
-        # Use endpoint without trailing slash
+        # Use endpoint with trailing slash
         endpoint = "/predictions"
         
         params = {
@@ -282,7 +272,7 @@ class APIClient:
         try:
             print(f"Checking API health at {API_BASE_URL}/health")
             
-            # Use endpoint without trailing slash
+            # Use endpoint with trailing slash
             response = await cls._make_request("GET", "/health")
             
             # Update connection status in session state

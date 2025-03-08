@@ -11,12 +11,22 @@ try:
     API_URL = st.secrets.get("api", {}).get("base_url", os.getenv("API_URL", "http://localhost:8000"))
     API_V1_PREFIX = st.secrets.get("api", {}).get("api_v1_prefix", os.getenv("API_V1_PREFIX", "/api/v1"))
     
+    # Ensure we're using HTTP instead of HTTPS
+    if API_URL.startswith("https://"):
+        API_URL = API_URL.replace("https://", "http://")
+        print(f"Converted HTTPS to HTTP: {API_URL}")
+    
     print(f"Using API URL from secrets: {API_URL}")
 except Exception as e:
     # Fall back to environment variables if secrets are not available
     print(f"Secrets not available, using environment variables: {str(e)}")
     API_URL = os.getenv("API_URL", "http://localhost:8000")
     API_V1_PREFIX = os.getenv("API_V1_PREFIX", "/api/v1")
+    
+    # Ensure we're using HTTP instead of HTTPS
+    if API_URL.startswith("https://"):
+        API_URL = API_URL.replace("https://", "http://")
+        print(f"Converted HTTPS to HTTP: {API_URL}")
 
 # Full API base URL
 API_BASE_URL = f"{API_URL}{API_V1_PREFIX}"
