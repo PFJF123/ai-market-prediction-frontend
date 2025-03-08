@@ -31,13 +31,13 @@ async def search_news(query=None, sentiment=None, sectors=None, limit=10, offset
                 st.error(f"Error searching news: {response['error']}")
                 return []
             
-            return response.get("items", [])
+            return response
     except Exception as e:
         st.error(f"Error searching news: {str(e)}")
         return []
 
 async def analyze_sentiment(article_id):
-    """Analyze sentiment for an article"""
+    """Analyze sentiment for a news article"""
     try:
         with st.spinner("Analyzing sentiment..."):
             updated_article = await APIClient.analyze_article_sentiment(article_id)
@@ -49,6 +49,13 @@ async def analyze_sentiment(article_id):
 def render_news_page():
     """Render the news page"""
     render_header()
+    
+    # Initialize session state variables if they don't exist
+    if "fetched_article_ids" not in st.session_state:
+        st.session_state.fetched_article_ids = []
+    
+    if "analyzed_articles" not in st.session_state:
+        st.session_state.analyzed_articles = []
     
     st.title("Financial News")
     
@@ -92,8 +99,10 @@ def render_news_page():
             st.session_state.news_search_results = search_results
         
         # Display search results
-        if "news_search_results" in st.session_state:
+        if "news_search_results" in st.session_state and st.session_state.news_search_results:
             render_news_list(st.session_state.news_search_results)
+        else:
+            st.info("Search for news articles to see results here.")
     
     with tab2:
         st.subheader("Fetch Latest News")
@@ -113,7 +122,7 @@ def render_news_page():
             asyncio.run(fetch_news(query=fetch_query, max_results=max_results))
         
         # Display fetched article IDs
-        if "fetched_article_ids" in st.session_state and st.session_state.fetched_article_ids:
+        if st.session_state.fetched_article_ids:
             st.success(f"Fetched {len(st.session_state.fetched_article_ids)} articles")
             
             # Option to analyze sentiment
@@ -133,18 +142,27 @@ def render_news_page():
                 st.success(f"Analyzed sentiment for {len(analyzed_articles)} articles")
             
             # Display analyzed articles if available
-            if "analyzed_articles" in st.session_state and st.session_state.analyzed_articles:
+            if st.session_state.analyzed_articles:
                 render_news_list(st.session_state.analyzed_articles)
             else:
-                # Search for the fetched articles to display them
-                article_ids_to_display = st.session_state.fetched_article_ids[:20]  # Limit to 20 for display
-                
-                # Fetch articles one by one
-                articles_to_display = []
-                for article_id in article_ids_to_display:
-                    article = asyncio.run(APIClient.get_news_article(article_id))
-                    if article and "error" not in article:
-                        articles_to_display.append(article)
-                
-                # Display the articles
-                render_news_list(articles_to_display) 
+                try:
+                    # Search for the fetched articles to display them
+                    article_ids_to_display = st.session_state.fetched_article_ids[:20]  # Limit to 20 for display
+                    
+                    # Fetch articles one by one
+                    articles_to_display = []
+                    for article_id in article_ids_to_display:
+                        article = asyncio.run(APIClient.get_news_article(article_id))
+                        if article and "error" not in article:
+                            articles_to_display.append(article)
+                    
+                    # Display the articles
+                    if articles_to_display:
+                        render_news_list(articles_to_display)
+                    else:
+                        st.info("No articles to display. Try fetching news first.")
+                except Exception as e:
+                    st.error(f"Error displaying articles: {str(e)}")
+                    st.info("Please try fetching news again.")
+        else:
+            st.info("Fetch news to see articles here.") 
