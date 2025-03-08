@@ -31,8 +31,21 @@ async def fetch_news(query=None, max_results=30):
             elif isinstance(response, list):
                 article_ids = response
             
+            # Ensure article_ids is a list
+            if not isinstance(article_ids, list):
+                print(f"Converting article_ids from {type(article_ids)} to list")
+                try:
+                    article_ids = list(article_ids)
+                except Exception as e:
+                    print(f"Error converting to list: {str(e)}")
+                    article_ids = []
+            
             # Store the article IDs in session state
             st.session_state.fetched_article_ids = article_ids
+            
+            # Log the article IDs for debugging
+            print(f"Fetched article IDs type: {type(st.session_state.fetched_article_ids)}")
+            print(f"Fetched article IDs: {st.session_state.fetched_article_ids}")
             
             # Show success message
             if article_ids:
@@ -42,6 +55,9 @@ async def fetch_news(query=None, max_results=30):
     except Exception as e:
         st.error(f"Error fetching news: {str(e)}")
         st.session_state.fetched_article_ids = []
+        # Log the exception details for debugging
+        import traceback
+        print(f"Exception in fetch_news: {traceback.format_exc()}")
 
 async def search_news(query=None, sentiment=None, sectors=None, limit=10, offset=0):
     """Search news from API"""
@@ -188,14 +204,29 @@ def render_news_page():
             # Option to analyze sentiment
             if st.button("Analyze Sentiment for All Articles"):
                 # Get the first 10 articles to analyze (to avoid overloading)
-                article_ids_to_analyze = st.session_state.fetched_article_ids[:10]
+                if isinstance(st.session_state.fetched_article_ids, list):
+                    article_ids_to_analyze = st.session_state.fetched_article_ids[:10]
+                else:
+                    # If it's not a list, convert it to a list first
+                    try:
+                        article_ids_to_analyze = list(st.session_state.fetched_article_ids)[:10]
+                    except Exception as e:
+                        st.error(f"Error preparing articles for analysis: {str(e)}")
+                        article_ids_to_analyze = []
+                
+                # Log the article IDs for debugging
+                print(f"Article IDs to analyze: {article_ids_to_analyze}")
                 
                 analyzed_articles = []
                 for article_id in article_ids_to_analyze:
-                    with st.spinner(f"Analyzing article {article_ids_to_analyze.index(article_id) + 1}/{len(article_ids_to_analyze)}..."):
-                        updated_article = asyncio.run(analyze_sentiment(article_id))
-                        if updated_article:
-                            analyzed_articles.append(updated_article)
+                    try:
+                        with st.spinner(f"Analyzing article {article_ids_to_analyze.index(article_id) + 1}/{len(article_ids_to_analyze)}..."):
+                            updated_article = asyncio.run(analyze_sentiment(article_id))
+                            if updated_article:
+                                analyzed_articles.append(updated_article)
+                    except Exception as e:
+                        st.error(f"Error analyzing article {article_id}: {str(e)}")
+                        continue
                 
                 # Store analyzed articles in session state
                 st.session_state.analyzed_articles = analyzed_articles
@@ -207,13 +238,21 @@ def render_news_page():
             else:
                 try:
                     # Search for the fetched articles to display them
-                    article_ids_to_display = st.session_state.fetched_article_ids[:20]  # Limit to 20 for display
+                    # Ensure fetched_article_ids is a list before slicing
+                    if isinstance(st.session_state.fetched_article_ids, list):
+                        article_ids_to_display = st.session_state.fetched_article_ids[:20]  # Limit to 20 for display
+                    else:
+                        # If it's not a list, convert it to a list first
+                        article_ids_to_display = list(st.session_state.fetched_article_ids)[:20]
+                    
+                    # Log the article IDs for debugging
+                    print(f"Article IDs to display: {article_ids_to_display}")
                     
                     # Fetch articles one by one
                     articles_to_display = []
                     for article_id in article_ids_to_display:
                         article = asyncio.run(APIClient.get_news_article(article_id))
-                        if article and "error" not in article:
+                        if article and isinstance(article, dict) and "error" not in article:
                             articles_to_display.append(article)
                     
                     # Display the articles
@@ -224,5 +263,10 @@ def render_news_page():
                 except Exception as e:
                     st.error(f"Error displaying articles: {str(e)}")
                     st.info("Please try fetching news again.")
+                    # Log the exception details for debugging
+                    import traceback
+                    print(f"Exception details: {traceback.format_exc()}")
+                    print(f"Fetched article IDs type: {type(st.session_state.fetched_article_ids)}")
+                    print(f"Fetched article IDs: {st.session_state.fetched_article_ids}")
         else:
             st.info("Fetch news to see articles here.") 

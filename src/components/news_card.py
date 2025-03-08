@@ -37,25 +37,37 @@ def render_news_card(article):
     Args:
         article: News article data
     """
+    # Validate article data
+    if not isinstance(article, dict):
+        st.warning(f"Invalid article data type: {type(article)}")
+        return
+    
+    # Extract article data with safe defaults
+    title = article.get('title', 'No Title')
+    source = article.get('source', 'Unknown Source')
+    published_at = article.get('published_at', '')
+    url = article.get('url', '#')
+    sentiment = article.get('sentiment', 'neutral').lower() if article.get('sentiment') else 'neutral'
+    sentiment_score = article.get('sentiment_score', 0)
+    content = article.get('content', article.get('description', 'No content available'))
+    
     # Create a card with border
     with st.container():
         st.markdown(
             f"""
             <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
-                <h3 style="margin-top: 0;">{article.get('title', 'No Title')}</h3>
+                <h3 style="margin-top: 0;">{title}</h3>
                 <p style="color: #666; font-size: 0.8rem;">
-                    {article.get('source', 'Unknown Source')} | {format_date(article.get('published_at', ''))}
+                    {source} | {format_date(published_at)}
                 </p>
             """,
             unsafe_allow_html=True
         )
         
         # Display sentiment if available
-        sentiment = article.get('sentiment')
-        if sentiment:
+        if sentiment != 'neutral':
             sentiment_color = get_sentiment_color(sentiment)
             sentiment_icon = get_sentiment_icon(sentiment)
-            sentiment_score = article.get('sentiment_score', 0.5)
             
             # Create a sentiment gauge
             fig = go.Figure(go.Indicator(
@@ -102,7 +114,6 @@ def render_news_card(article):
             st.markdown(f"**Summary:** {summary}")
         
         # Display content preview if available
-        content = article.get('content')
         if content:
             # Truncate content if too long
             if len(content) > 300:
@@ -110,9 +121,7 @@ def render_news_card(article):
             st.markdown(f"**Content:** {content}")
         
         # Add link to original article
-        url = article.get('url')
-        if url:
-            st.markdown(f"[Read full article]({url})")
+        st.markdown(f"[Read full article]({url})")
         
         # Close the card div
         st.markdown("</div>", unsafe_allow_html=True)
@@ -125,6 +134,15 @@ def render_news_list(articles, show_sentiment_filter=True):
         articles: List of news articles
         show_sentiment_filter: Whether to show sentiment filter
     """
+    # Ensure articles is a list
+    if not isinstance(articles, list):
+        try:
+            articles = list(articles)
+        except Exception as e:
+            st.error(f"Error: Articles data is not a list and cannot be converted to one. Type: {type(articles)}")
+            st.info("Please try fetching news again.")
+            return
+    
     if not articles:
         st.info("No news articles found.")
         return
@@ -157,11 +175,22 @@ def render_news_list(articles, show_sentiment_filter=True):
     # Filter articles by sentiment if selected
     filtered_articles = articles
     if selected_sentiment:
-        filtered_articles = [a for a in articles if a.get('sentiment') == selected_sentiment]
+        try:
+            filtered_articles = [a for a in articles if isinstance(a, dict) and a.get('sentiment') == selected_sentiment]
+        except Exception as e:
+            st.error(f"Error filtering articles: {str(e)}")
+            filtered_articles = articles
     
     # Display count
     st.markdown(f"**Showing {len(filtered_articles)} of {len(articles)} articles**")
     
     # Render each article
     for article in filtered_articles:
-        render_news_card(article) 
+        try:
+            if isinstance(article, dict):
+                render_news_card(article)
+            else:
+                st.warning(f"Skipping invalid article data: {type(article)}")
+        except Exception as e:
+            st.error(f"Error rendering article: {str(e)}")
+            continue 
