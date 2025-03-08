@@ -1,14 +1,20 @@
 import streamlit as st
 import asyncio
 import time
+import json
 from ..components.header import render_header
 from ..components.prediction_card import render_prediction
 from ..utils.api import APIClient
+from ..utils.config import API_BASE_URL
 
 async def generate_prediction(query, time_frame="medium_term", sectors_of_interest=None, max_trade_ideas=5):
     """Generate a market prediction"""
     try:
         with st.spinner(f"Generating prediction for '{query}'..."):
+            # Log the request for debugging
+            print(f"Generating prediction for query: '{query}', time_frame: {time_frame}, sectors: {sectors_of_interest}, max_trade_ideas: {max_trade_ideas}")
+            
+            # Make the API request
             response = await APIClient.generate_prediction(
                 query=query,
                 time_frame=time_frame,
@@ -16,15 +22,40 @@ async def generate_prediction(query, time_frame="medium_term", sectors_of_intere
                 max_trade_ideas=max_trade_ideas
             )
             
-            if "error" in response:
-                st.error(f"Error generating prediction: {response['error']}")
+            # Log the response for debugging
+            print(f"Generate prediction response type: {type(response)}")
+            if response:
+                print(f"Generate prediction response: {json.dumps(response, default=str)[:500]}...")
+            
+            # Handle error responses
+            if isinstance(response, dict) and "error" in response:
+                error_msg = response["error"]
+                st.error(f"Error generating prediction: {error_msg}")
+                
+                # If it's a connection error, provide troubleshooting steps
+                if "connection_error" in response:
+                    st.info("""
+                    Unable to connect to the API. Please check:
+                    1. The backend API is running
+                    2. Your network connection is working
+                    3. The API URL in the configuration is correct
+                    """)
                 return None
             
             # Extract the prediction from the response
-            prediction = response.get("prediction")
-            processing_time = response.get("processing_time", 0)
+            prediction = None
+            processing_time = 0
             
-            st.success(f"Prediction generated in {processing_time:.2f} seconds")
+            if isinstance(response, dict):
+                prediction = response.get("prediction", response)
+                processing_time = response.get("processing_time", 0)
+            else:
+                prediction = response
+            
+            if prediction:
+                st.success(f"Prediction generated in {processing_time:.2f} seconds")
+            else:
+                st.warning("No prediction data returned from the API")
             
             return prediction
     except Exception as e:
@@ -35,10 +66,30 @@ async def get_prediction(prediction_id):
     """Get a specific prediction by ID"""
     try:
         with st.spinner("Loading prediction..."):
+            # Log the request for debugging
+            print(f"Getting prediction with ID: {prediction_id}")
+            
+            # Make the API request
             prediction = await APIClient.get_prediction(prediction_id)
             
-            if "error" in prediction:
-                st.error(f"Error loading prediction: {prediction['error']}")
+            # Log the response for debugging
+            print(f"Get prediction response type: {type(prediction)}")
+            if prediction:
+                print(f"Get prediction response: {json.dumps(prediction, default=str)[:500]}...")
+            
+            # Handle error responses
+            if isinstance(prediction, dict) and "error" in prediction:
+                error_msg = prediction["error"]
+                st.error(f"Error loading prediction: {error_msg}")
+                
+                # If it's a connection error, provide troubleshooting steps
+                if "connection_error" in prediction:
+                    st.info("""
+                    Unable to connect to the API. Please check:
+                    1. The backend API is running
+                    2. Your network connection is working
+                    3. The API URL in the configuration is correct
+                    """)
                 return None
             
             return prediction
@@ -50,12 +101,33 @@ async def get_recent_predictions(limit=5):
     """Get recent predictions"""
     try:
         with st.spinner("Loading recent predictions..."):
+            # Log the API request for debugging
+            print(f"Requesting recent predictions with limit={limit}")
+            
+            # Make the API request - the API client now ensures trailing slashes
             predictions = await APIClient.get_recent_predictions(limit=limit)
             
+            # Log the response for debugging
+            print(f"Recent predictions response type: {type(predictions)}")
+            if predictions:
+                print(f"Recent predictions response: {json.dumps(predictions, default=str)[:500]}...")
+            
+            # Handle error responses
             if isinstance(predictions, dict) and "error" in predictions:
-                st.error(f"Error loading recent predictions: {predictions['error']}")
+                error_msg = predictions["error"]
+                st.error(f"Error loading recent predictions: {error_msg}")
+                
+                # If it's a connection error, provide troubleshooting steps
+                if "connection_error" in predictions:
+                    st.info("""
+                    Unable to connect to the API. Please check:
+                    1. The backend API is running
+                    2. Your network connection is working
+                    3. The API URL in the configuration is correct
+                    """)
                 return []
             
+            # Return the predictions
             return predictions
     except Exception as e:
         st.error(f"Error loading recent predictions: {str(e)}")
