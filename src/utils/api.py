@@ -8,82 +8,62 @@ from .config import API_BASE_URL
 class APIClient:
     """Client for interacting with the backend API"""
     
-    @staticmethod
-    async def _make_request(method: str, endpoint: str, params: Dict[str, Any] = None, data: Dict[str, Any] = None) -> Dict[str, Any]:
+    @classmethod
+    async def _make_request(
+        cls, method: str, endpoint: str, params: Optional[Dict[str, Any]] = None, data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Make a request to the API
         
         Args:
-            method: HTTP method (GET, POST, etc.)
+            method: HTTP method
             endpoint: API endpoint
             params: Query parameters
-            data: Request body
+            data: Request data
             
         Returns:
             API response
         """
         url = f"{API_BASE_URL}{endpoint}"
-        
-        start_time = time.time()
+        print(f"Making {method} request to {url}")
+        if params:
+            print(f"With params: {json.dumps(params, default=str)}")
         
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 if method == "GET":
-                    response = await client.get(url, params=params, timeout=30.0)
+                    response = await client.get(url, params=params)
                 elif method == "POST":
-                    response = await client.post(url, json=data, params=params, timeout=30.0)
+                    response = await client.post(url, json=data, params=params)
                 else:
-                    raise ValueError(f"Unsupported HTTP method: {method}")
+                    return {"error": f"Unsupported method: {method}"}
                 
-                elapsed_time = time.time() - start_time
+                # Check if we got redirected
+                if len(response.history) > 0:
+                    original_url = str(response.history[0].url)
+                    final_url = str(response.url)
+                    print(f"Request was redirected: {original_url} -> {final_url}")
+                    # We still proceed with processing the response
                 
-                # Check if the request was successful
-                response.raise_for_status()
-                
-                # Parse the response
-                result = response.json()
-                
-                # Log the request
-                print(f"API Request: {method} {endpoint} - {response.status_code} - {elapsed_time:.2f}s")
-                
-                return result
-                
-        except httpx.ConnectError as e:
-            elapsed_time = time.time() - start_time
-            error_message = f"Cannot connect to API at {API_BASE_URL}. Please check if the backend is running."
-            print(f"API Connection Error: {method} {endpoint} - {str(e)} - {elapsed_time:.2f}s")
-            
-            # Store connection status in session state
-            if "api_connected" in st.session_state:
-                st.session_state.api_connected = False
-                
-            return {"error": error_message, "connection_error": True}
-            
-        except httpx.HTTPStatusError as e:
-            elapsed_time = time.time() - start_time
-            print(f"API Error: {method} {endpoint} - {e.response.status_code} - {elapsed_time:.2f}s")
-            
-            # Try to parse the error response
-            try:
-                error_detail = e.response.json().get("detail", str(e))
-            except:
-                error_detail = str(e)
-            
-            # Store connection status in session state
-            if "api_connected" in st.session_state:
-                st.session_state.api_connected = True
-                
-            return {"error": error_detail}
-            
+                if response.status_code == 200:
+                    try:
+                        return response.json()
+                    except Exception as e:
+                        print(f"Error parsing JSON response: {str(e)}")
+                        return {"error": "Invalid JSON response", "raw_response": response.text[:500]}
+                else:
+                    print(f"API error: {response.status_code} - {response.text[:500]}")
+                    return {
+                        "error": f"API error: {response.status_code}",
+                        "details": response.text[:500],
+                        "status": "error"
+                    }
+        except httpx.RequestError as e:
+            print(f"Request error: {str(e)}")
+            return {"connection_error": str(e), "status": "error"}
         except Exception as e:
-            elapsed_time = time.time() - start_time
-            print(f"API Error: {method} {endpoint} - {str(e)} - {elapsed_time:.2f}s")
-            
-            # Store connection status in session state
-            if "api_connected" in st.session_state:
-                st.session_state.api_connected = False
-                
-            return {"error": str(e)}
+            print(f"Unexpected error: {str(e)}")
+            return {"error": str(e), "status": "error"}
     
     @classmethod
     async def search_news(cls, query: str = None, sentiment: str = None, sectors: List[str] = None, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
@@ -114,7 +94,7 @@ class APIClient:
         if sectors:
             params["sectors"] = sectors
             
-        return await cls._make_request("GET", "/news", params=params)
+        return await cls._make_request("GET", "/news/", params=params)
     
     @classmethod
     async def fetch_news(cls, query: str = None, max_results: int = 30) -> List[str]:
@@ -136,7 +116,7 @@ class APIClient:
         if max_results:
             params["max_results"] = max_results
             
-        return await cls._make_request("GET", "/news/fetch", params=params)
+        return await cls._make_request("GET", "/news/fetch/", params=params)
     
     @classmethod
     async def get_news_article(cls, article_id: str) -> Dict[str, Any]:
@@ -149,7 +129,7 @@ class APIClient:
         Returns:
             News article
         """
-        return await cls._make_request("GET", f"/news/{article_id}")
+        return await cls._make_request("GET", f"/news/{article_id}/")
     
     @classmethod
     async def analyze_article_sentiment(cls, article_id: str) -> Dict[str, Any]:
@@ -162,7 +142,7 @@ class APIClient:
         Returns:
             Updated news article with sentiment analysis
         """
-        return await cls._make_request("POST", f"/news/{article_id}/analyze")
+        return await cls._make_request("POST", f"/news/{article_id}/analyze/")
     
     @classmethod
     async def generate_prediction(cls, query: str, time_frame: str = "medium_term", sectors_of_interest: List[str] = None, max_trade_ideas: int = 5) -> Dict[str, Any]:
@@ -187,7 +167,7 @@ class APIClient:
         if sectors_of_interest:
             data["sectors_of_interest"] = sectors_of_interest
             
-        return await cls._make_request("POST", "/predictions", data=data)
+        return await cls._make_request("POST", "/predictions/", data=data)
     
     @classmethod
     async def get_prediction(cls, prediction_id: str) -> Dict[str, Any]:
@@ -200,7 +180,7 @@ class APIClient:
         Returns:
             Market prediction
         """
-        return await cls._make_request("GET", f"/predictions/{prediction_id}")
+        return await cls._make_request("GET", f"/predictions/{prediction_id}/")
     
     @classmethod
     async def get_recent_predictions(cls, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
@@ -214,12 +194,33 @@ class APIClient:
         Returns:
             List of market predictions
         """
+        # Ensure the URL ends with a trailing slash to avoid redirects
+        endpoint = "/predictions/"
+        
         params = {
             "limit": limit,
             "offset": offset
         }
         
-        return await cls._make_request("GET", "/predictions", params=params)
+        response = await cls._make_request("GET", endpoint, params=params)
+        
+        # Log the response for debugging
+        print(f"Recent predictions API response: {json.dumps(response, default=str)[:500]}...")
+        
+        # If the response is a dictionary with 'data' field, extract the data
+        if isinstance(response, dict) and "data" in response and "error" not in response:
+            return response["data"]
+        
+        # If the response is a dictionary with 'items' field, extract the items
+        if isinstance(response, dict) and "items" in response and "error" not in response:
+            return response["items"]
+        
+        # If the response is already a list, return it
+        if isinstance(response, list):
+            return response
+            
+        # If there's an error, return the response as is
+        return response
     
     @classmethod
     async def health_check(cls) -> Dict[str, Any]:
@@ -229,15 +230,24 @@ class APIClient:
         Returns:
             Health check response
         """
-        response = await cls._make_request("GET", "/health")
-        
-        # Update connection status in session state
-        if "api_connected" not in st.session_state:
-            st.session_state.api_connected = False
+        try:
+            # Use trailing slash to avoid redirects
+            response = await cls._make_request("GET", "/health/")
             
-        if "error" not in response or "connection_error" not in response:
-            st.session_state.api_connected = True
-        else:
-            st.session_state.api_connected = False
-            
-        return response 
+            # Update connection status in session state
+            if "api_connected" not in st.session_state:
+                st.session_state.api_connected = False
+                
+            if "error" not in response and "connection_error" not in response and "redirect_error" not in response:
+                st.session_state.api_connected = True
+                print(f"API health check successful: {json.dumps(response, default=str)}")
+            else:
+                st.session_state.api_connected = False
+                print(f"API health check failed: {json.dumps(response, default=str)}")
+                
+            return response
+        except Exception as e:
+            print(f"API health check exception: {str(e)}")
+            if "api_connected" in st.session_state:
+                st.session_state.api_connected = False
+            return {"error": str(e), "status": "error"} 

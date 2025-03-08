@@ -8,9 +8,37 @@ async def fetch_news(query=None, max_results=30):
     """Fetch news from API"""
     try:
         with st.spinner("Fetching news..."):
-            article_ids = await APIClient.fetch_news(query=query, max_results=max_results)
+            response = await APIClient.fetch_news(query=query, max_results=max_results)
+            
+            # Log the raw response for debugging
+            print(f"Fetch news response: {str(response)[:500]}...")
+            
+            # Handle error responses
+            if isinstance(response, dict) and "error" in response:
+                st.error(f"Error fetching news: {response['error']}")
+                st.session_state.fetched_article_ids = []
+                return
+            
+            # Handle different response formats
+            article_ids = []
+            if isinstance(response, dict):
+                if "data" in response:
+                    article_ids = response.get("data", [])
+                elif "items" in response:
+                    article_ids = response.get("items", [])
+                elif "article_ids" in response:
+                    article_ids = response.get("article_ids", [])
+            elif isinstance(response, list):
+                article_ids = response
+            
+            # Store the article IDs in session state
             st.session_state.fetched_article_ids = article_ids
-            st.success(f"Fetched {len(article_ids)} news articles")
+            
+            # Show success message
+            if article_ids:
+                st.success(f"Fetched {len(article_ids)} news articles")
+            else:
+                st.info("No news articles found matching your query")
     except Exception as e:
         st.error(f"Error fetching news: {str(e)}")
         st.session_state.fetched_article_ids = []
@@ -27,11 +55,33 @@ async def search_news(query=None, sentiment=None, sectors=None, limit=10, offset
                 offset=offset
             )
             
-            if "error" in response:
+            # Log the raw response for debugging
+            print(f"News search response: {str(response)[:500]}...")
+            
+            # Handle error responses
+            if isinstance(response, dict) and "error" in response:
                 st.error(f"Error searching news: {response['error']}")
                 return []
             
-            return response
+            # Handle different response formats
+            if isinstance(response, dict):
+                # Extract data from dictionary response
+                if "data" in response:
+                    return response.get("data", [])
+                elif "items" in response:
+                    return response.get("items", [])
+                elif "articles" in response:
+                    return response.get("articles", [])
+                else:
+                    # Single article
+                    return [response]
+            elif isinstance(response, list):
+                # List of articles
+                return response
+            else:
+                # Unknown format
+                st.error("Unexpected response format from API")
+                return []
     except Exception as e:
         st.error(f"Error searching news: {str(e)}")
         return []
@@ -40,8 +90,18 @@ async def analyze_sentiment(article_id):
     """Analyze sentiment for a news article"""
     try:
         with st.spinner("Analyzing sentiment..."):
-            updated_article = await APIClient.analyze_article_sentiment(article_id)
-            return updated_article
+            response = await APIClient.analyze_article_sentiment(article_id)
+            
+            # Log the raw response for debugging
+            print(f"Sentiment analysis response: {str(response)[:500]}...")
+            
+            # Handle error responses
+            if isinstance(response, dict) and "error" in response:
+                st.error(f"Error analyzing sentiment: {response['error']}")
+                return None
+            
+            # Return the updated article
+            return response
     except Exception as e:
         st.error(f"Error analyzing sentiment: {str(e)}")
         return None
