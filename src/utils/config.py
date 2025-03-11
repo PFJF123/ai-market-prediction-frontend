@@ -8,7 +8,7 @@ load_dotenv()
 # Try to get settings from Streamlit secrets first, then fall back to environment variables
 try:
     # API Settings from Streamlit secrets
-    API_URL = st.secrets.get("api", {}).get("base_url", os.getenv("API_URL", "http://localhost:8000"))
+    API_URL = st.secrets.get("api", {}).get("base_url", os.getenv("API_URL", "https://chic-nourishment-production.up.railway.app"))
     API_V1_PREFIX = st.secrets.get("api", {}).get("api_v1_prefix", os.getenv("API_V1_PREFIX", "/api/v1"))
     
     # Ensure we're using HTTP instead of HTTPS
@@ -20,7 +20,7 @@ try:
 except Exception as e:
     # Fall back to environment variables if secrets are not available
     print(f"Secrets not available, using environment variables: {str(e)}")
-    API_URL = os.getenv("API_URL", "http://localhost:8000")
+    API_URL = os.getenv("API_URL", "https://chic-nourishment-production.up.railway.app")
     API_V1_PREFIX = os.getenv("API_V1_PREFIX", "/api/v1")
     
     # Ensure we're using HTTP instead of HTTPS
