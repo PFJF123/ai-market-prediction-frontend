@@ -5,8 +5,7 @@
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://ai-market-prediction-production.up.railway.app",
-    "NEXT_PUBLIC_APP_ENV": "production",
-    "NEXT_PUBLIC_LOG_LEVEL": "error"
+    "NODE_ENV": "production"
   },
   "headers": [
     {
@@ -25,12 +24,6 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/v1/health"
     }
   ]
 }
