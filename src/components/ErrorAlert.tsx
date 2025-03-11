@@ -3,27 +3,31 @@
 import { Card, Text } from '@tremor/react';
 
 interface ErrorAlertProps {
+  title: string;
   message: string;
   className?: string;
 }
 
-export default function ErrorAlert({ message, className = '' }: ErrorAlertProps) {
+export default function ErrorAlert({ title, message, className = '' }: ErrorAlertProps) {
   return (
-    <Card className={`bg-red-50 border border-red-100 mt-4 ${className}`}>
-      <div className="flex items-center">
-        <svg
-          className="h-5 w-5 text-red-400"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-            clipRule="evenodd"
-          />
-        </svg>
-        <Text className="text-red-700 ml-2">{message}</Text>
+    <Card className={`bg-red-50 border border-red-100 ${className}`}>
+      <div className="flex flex-col">
+        <div className="flex items-center mb-2">
+          <svg
+            className="h-5 w-5 text-red-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <Text className="text-red-700 font-medium ml-2">{title}</Text>
+        </div>
+        <Text className="text-red-600 ml-7">{message}</Text>
       </div>
     </Card>
   );

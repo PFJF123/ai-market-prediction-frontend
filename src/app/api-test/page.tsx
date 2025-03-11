@@ -66,7 +66,11 @@ export default function ApiTestPage() {
           <LoadingSpinner size="lg" />
         </div>
       ) : error ? (
-        <ErrorAlert message={errorMessage || "Failed to check API health"} />
+        <ErrorAlert 
+          title="API Health Check Failed"
+          message={errorMessage || "Failed to check API health. Please try again later."} 
+          className="mt-4"
+        />
       ) : health ? (
         <Grid numItems={1} numItemsSm={2} numItemsLg={3} className="gap-6 mt-6">
           <Card>
