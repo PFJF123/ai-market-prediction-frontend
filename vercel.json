@@ -5,7 +5,10 @@
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://ai-market-prediction-production.up.railway.app",
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "NEXT_PUBLIC_API_VERSION": "v1",
+    "NEXT_PUBLIC_ENABLE_SWR": "true",
+    "NEXT_PUBLIC_SWR_INTERVAL": "5000"
   },
   "headers": [
     {
