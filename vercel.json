@@ -3,6 +3,8 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "outputDirectory": ".next",
+  "name": "ai-market-prediction-frontend",
+  "scope": "justoms-projects",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://ai-market-prediction-production.up.railway.app",
     "NODE_ENV": "production",
