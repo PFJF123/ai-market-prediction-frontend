@@ -1,69 +1,76 @@
 # AI Market Prediction Frontend
 
-A Streamlit-based frontend for the AI Market Prediction application that visualizes market predictions based on news sentiment analysis.
+Next.js frontend application for visualizing market trends and predictions based on AI analysis of financial news.
+
+## Production Deployment
+
+The application is deployed on Vercel at:
+https://frontend-c0gyw24lh-justoms-projects.vercel.app
 
 ## Features
 
-- **Interactive Dashboard**: View market trends and predictions at a glance
-- **News Analysis**: Browse and search financial news with AI-powered sentiment analysis
-- **Market Predictions**: Visualize XGBoost model predictions for different market sectors
-- **Responsive Design**: Optimized for both desktop and mobile viewing
+- Real-time market trend visualization
+- News-based market sentiment analysis
+- API health monitoring dashboard
+- Fallback data handling for API outages
+- Responsive design for all devices
 
-## Deployment
+## Backend Integration
 
-### Streamlit Cloud
+The application integrates with our FastAPI backend deployed on Railway:
+https://ai-market-prediction-production.up.railway.app
 
-This application is designed to be deployed on Streamlit Cloud:
+## Getting Started
 
-1. Fork or clone this repository to your GitHub account
-2. Go to [Streamlit Cloud](https://streamlit.io/cloud)
-3. Sign in with your GitHub account
-4. Deploy the app by selecting this repository
-5. Set up the following secrets in the Streamlit Cloud dashboard:
-   ```toml
-   [api]
-   base_url = "http://chic-nourishment-production.up.railway.app"
-   ```
+1. Install dependencies:
+```bash
+npm install
+```
 
-### Local Development
+2. Run development server:
+```bash
+npm run dev
+```
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/PFJF123/ai-market-prediction-frontend.git
-   cd ai-market-prediction-frontend
-   ```
+3. Build for production:
+```bash
+npm run build
+```
 
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+## Environment Variables
 
-3. Create a `.env` file with the following content:
-   ```
-   API_URL=http://chic-nourishment-production.up.railway.app
-   ```
+Required environment variables in `.env` or Vercel:
 
-4. Run the application:
-   ```
-   streamlit run app.py
-   ```
-
-## Backend Connection
-
-The frontend is configured to connect to the backend API deployed at:
-- http://chic-nourishment-production.up.railway.app
-
-If you need to connect to a different backend, update the `API_URL` in the `.env` file.
+- `NEXT_PUBLIC_API_URL`: Backend API URL
+- `NEXT_PUBLIC_APP_ENV`: Environment (development/production)
+- `NEXT_PUBLIC_LOG_LEVEL`: Logging level
 
 ## Project Structure
 
-- `app.py`: Main application entry point
-- `src/app.py`: Core application logic
-- `src/components/`: UI components
-- `src/pages/`: Application pages
-- `src/utils/`: Utility functions
-- `.streamlit/`: Streamlit configuration
+```
+src/
+├── app/                # Next.js pages
+│   ├── api-test/      # API monitoring page
+│   ├── debug/         # Debug utilities
+│   └── trends/        # Market trends visualization
+├── components/        # React components
+├── context/          # React context providers
+├── hooks/            # Custom React hooks
+└── utils/           # Utility functions
+```
 
-## Dependencies
+## Testing
 
-See `requirements.txt` for a full list of dependencies. 
+```bash
+npm run test
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+## License
+
+MIT License
