@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, Title, Text, Badge } from '@tremor/react';
-To https://github.com/PFJF123/ai-market-prediction.git
-   f7e9d98..3484cff  main -> main
 import { useApiGet, useApiState } from '@/hooks/useApi';
 import { useFallbackData } from '@/hooks/useFallbackData';
 import { Trend } from '@/types/api';
